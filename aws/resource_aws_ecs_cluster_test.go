@@ -157,6 +157,31 @@ func TestAccAWSEcsCluster_Tags(t *testing.T) {
 	})
 }
 
+func TestAccAWSEcsCluster_containerInsights(t *testing.T) {
+	var cluster1 ecs.Cluster
+	rName := acctest.RandomWithPrefix("tf-acc-test")
+	resourceName := "aws_ecs_cluster.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAWSEcsClusterDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAWSEcsClusterConfigContainerInsights(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAWSEcsClusterExists(resourceName, &cluster1),
+					testAccCheckResourceAttrRegionalARN(resourceName, "arn", "ecs", fmt.Sprintf("cluster/%s", rName)),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "setting.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "setting.4047805881.name", "containerInsights"),
+					resource.TestCheckResourceAttr(resourceName, "setting.4047805881.value", "enabled"),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckAWSEcsClusterDestroy(s *terraform.State) error {
 	conn := testAccProvider.Meta().(*AWSClient).ecsconn
 
@@ -261,4 +286,16 @@ resource "aws_ecs_cluster" "test" {
   }
 }
 `, rName, tag1Key, tag1Value, tag2Key, tag2Value)
+}
+
+func testAccAWSEcsClusterConfigContainerInsights(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_ecs_cluster" "test" {
+  name = %q
+  setting {
+	name = "containerInsights"
+	value = "enabled"
+  }
+}
+`, rName)
 }
